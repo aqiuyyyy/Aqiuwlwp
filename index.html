@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>阿漱外链网盘</title>
+  <title>阿湫外链网盘</title>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
   <style>
@@ -19,7 +19,7 @@
 
 <div class="navbar navbar-default">
   <div class="container">
-    <a class="navbar-brand" href="./" style="color:white;">阿漱外链网盘</a>
+    <a class="navbar-brand" href="./" style="color:white;">阿湫外链网盘</a>
   </div>
 </div>
 
@@ -55,38 +55,40 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
-// Vercel Blob 客户端直传（推荐方式，避免 formData 崩溃）
+// Vercel Blob 客户端上传（官方推荐方式）
 async function uploadFile(file) {
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    // 先获取临时上传 URL（Vercel 会自动使用 BLOB_READ_WRITE_TOKEN）
+    // 1. 从你的后端获取临时上传 Token
     const tokenRes = await fetch('/api/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name, size: file.size })
+      body: formData   // handleUpload 需要 multipart
     });
 
     if (!tokenRes.ok) {
-      const errText = await tokenRes.text();
-      throw new Error(errText || '获取上传权限失败');
+      const err = await tokenRes.text();
+      throw new Error(err || '获取上传权限失败');
     }
 
     const { url } = await tokenRes.json();
 
-    // 直接上传到 Blob
+    // 2. 浏览器直接上传到 Blob（带正确授权）
     const uploadRes = await fetch(url, {
       method: 'PUT',
-      body: file
+      body: file,
+      headers: {
+        'x-vercel-blob-upload': 'true'
+      }
     });
 
     if (uploadRes.ok) {
-      const blobUrl = uploadRes.url || url.split('?')[0]; // 真实直链
+      const blobUrl = uploadRes.url || url.split('?')[0];
       addToTable(file.name, blobUrl, (file.size / 1024 / 1024).toFixed(2) + ' MB');
       alert(`✅ 上传成功！\n直链：${blobUrl}`);
     } else {
-      throw new Error('上传到 Blob 失败');
+      throw new Error('Blob 上传失败 (403)');
     }
   } catch (e) {
     console.error(e);

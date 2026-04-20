@@ -1,24 +1,21 @@
 import { put } from '@vercel/blob';
 import { Redis } from '@upstash/redis';
-
 const redis = Redis.fromEnv();
 
-export const config = {
-  api: { bodyParser: false },
-};
+export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  const username = req.headers['x-username'];
+  if (!username) return res.status(401).json({ error: '请先登录' });
+
   try {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
-
     const filename = decodeURIComponent(req.headers['x-filename'] || 'upload');
-    const blob = await put(filename, buffer, {
-      access: 'public',
-      addRandomSuffix: true,
-    });
+
+    const blob = await put(filename, buffer, { access: 'public', addRandomSuffix: true });
 
     const record = {
       id: Date.now().toString(),
@@ -27,10 +24,10 @@ export default async function handler(req, res) {
       size: buffer.length,
       type: req.headers['content-type'] || '',
       uploadedAt: new Date().toISOString(),
+      owner: username,
     };
 
-    await redis.lpush('files', JSON.stringify(record));
-
+    await redis.lpush(`files:${username}`, JSON.stringify(record));
     return res.status(200).json({ url: blob.url, record });
   } catch (error) {
     console.error(error);

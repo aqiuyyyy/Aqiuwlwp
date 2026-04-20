@@ -4,72 +4,43 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>阿湫外链网盘</title>
-  <meta name="description" content="个人免费外链网盘 - 支持图片、音乐等文件直链">
-
-  <!-- 阿湫网盘专用 CDN 资源 -->
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/bootstrap-material-design.min.css" rel="stylesheet">
-  <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/ripples.min.css" rel="stylesheet">
 
   <style>
-    body { background: #f8f8f8; font-family: "Microsoft YaHei", Arial, sans-serif; }
-    .navbar { background: #337ab7; }
-    .navbar-brand { color: white !important; font-weight: bold; }
-    .well { background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .filelist th { background: #f0f0f0; }
-    .upload-area {
-      border: 3px dashed #337ab7; padding: 40px; text-align: center; margin: 20px 0; border-radius: 6px;
-      background: #fafafa;
-    }
-    .file-item audio { width: 100%; margin-top: 8px; }
+    body { background:#f8f8f8; font-family:"Microsoft YaHei",Arial,sans-serif; }
+    .navbar { background:#337ab7; }
+    .navbar-brand { color:white !important; font-weight:bold; }
+    .well { background:white; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+    .upload-area { border:3px dashed #337ab7; padding:50px; text-align:center; margin:20px 0; border-radius:6px; background:#fafafa; }
+    .upload-area:hover { border-color:#5cb85c; background:#f0f8ff; }
   </style>
 </head>
 <body>
 
 <div class="navbar navbar-default">
   <div class="container">
-    <div class="navbar-header">
-      <a class="navbar-brand" href="./">阿湫外链网盘</a>
-    </div>
-    <ul class="nav navbar-nav">
-      <li class="active"><a href="./"><i class="fa fa-list"></i> 文件列表</a></li>
-      <li><a href="#" onclick="showUpload()"><i class="fa fa-upload"></i> 上传文件</a></li>
-    </ul>
+    <a class="navbar-brand" href="./">阿湫外链网盘</a>
   </div>
 </div>
 
 <div class="container">
-  <div class="well bs-component">
-    <h2>文件列表 
-      <span class="pull-right">
-        <input id="searchInput" type="text" class="form-control input-sm" placeholder="搜索文件名" style="width:220px;display:inline-block;" onkeyup="filterTable()">
-      </span>
-    </h2>
+  <div class="well">
+    <h2>文件列表</h2>
 
-    <!-- 上传区域 -->
-    <div id="uploadSection" class="upload-area" style="display:none;">
-      <p>拖拽文件到此处，或点击下方按钮<br>支持图片、音乐、文档等（推荐单文件 < 50MB）</p>
+    <div class="upload-area">
+      <h4>拖拽或点击上传（支持图片、音乐）</h4>
       <input type="file" id="fileInput" multiple style="display:none;">
-      <button class="btn btn-primary btn-raised" onclick="document.getElementById('fileInput').click()">选择文件上传</button>
-      <p style="margin-top:15px;color:#666;">粘贴图片（Ctrl+V）也可直接上传</p>
+      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择文件上传</button>
     </div>
 
     <div class="table-responsive">
-      <table class="table table-striped table-hover filelist" id="fileTable">
+      <table class="table table-striped" id="fileTable">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>操作</th>
-            <th>文件名</th>
-            <th>文件大小</th>
-            <th>格式</th>
-            <th>上传时间</th>
-          </tr>
+          <tr><th>#</th><th>操作</th><th>文件名</th><th>大小</th><th>上传时间</th></tr>
         </thead>
-        <tbody id="fileListBody">
-          <!-- JS 动态填充 -->
-        </tbody>
+        <tbody id="fileList"></tbody>
       </table>
     </div>
   </div>
@@ -77,149 +48,54 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
-<script src="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/js/material.min.js"></script>
-<script src="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/js/ripples.min.js"></script>
 
 <script>
-// ================== 配置区 ==================
-const GITHUB_TOKEN = 'ghp_你的Token';     // ← 改成你的 Token（推荐用 Vercel 环境变量）
-const OWNER = '你的GitHub用户名';
-const REPO = '你的仓库名';
-const BRANCH = 'main';
-// ===========================================
-
-let filesData = [];
-
-$(document).ready(function() {
-  $.material.init();
-  loadFiles();           // 加载已有文件（可选）
-  setupUpload();
-});
-
-function showUpload() {
-  $('#uploadSection').toggle();
-}
-
-// 上传逻辑（和之前一样，优化后）
+// 上传函数
 async function uploadFile(file) {
-  const base64 = await fileToBase64(file);
-  const timestamp = Date.now();
-  const path = `${timestamp}-${file.name}`;
+  const formData = new FormData();
+  formData.append('file', file);
 
-  const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${path}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `token ${GITHUB_TOKEN}`,
-      'Accept': 'application/vnd.github.v3+json'
-    },
-    body: JSON.stringify({
-      message: `上传 ${file.name}`,
-      content: base64.split(',')[1],
-      branch: BRANCH
-    })
-  });
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
 
-  if (res.ok) {
-    const rawUrl = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${path}`;
-    const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
-
-    const newFile = {
-      id: filesData.length + 1,
-      name: file.name,
-      size: size,
-      ext: file.name.split('.').pop().toLowerCase(),
-      time: new Date().toLocaleString('zh-CN'),
-      url: rawUrl,
-      isAudio: file.type.startsWith('audio/')
-    };
-
-    filesData.unshift(newFile);
-    renderTable();
-    alert('上传成功！直链已生成');
-  } else {
-    alert('上传失败，请检查 Token 或仓库权限');
+    if (res.ok) {
+      const data = await res.json();
+      alert(`✅ 上传成功！直链：${data.url}`);
+      addToTable(file.name, data.url, (file.size/1024/1024).toFixed(2)+' MB');
+    } else {
+      alert('上传失败：' + await res.text());
+    }
+  } catch(e) {
+    alert('网络错误：' + e.message);
   }
 }
 
-function fileToBase64(file) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
+// 添加到表格
+function addToTable(name, url, size) {
+  const tbody = document.getElementById('fileList');
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${tbody.children.length + 1}</td>
+    <td><a href="${url}" target="_blank">下载</a> | <a href="#" onclick="copy('${url}')">复制直链</a></td>
+    <td>${name}</td>
+    <td>${size}</td>
+    <td>${new Date().toLocaleString('zh-CN')}</td>
+  `;
+  tbody.appendChild(row);
 }
 
-function setupUpload() {
-  const dropArea = $('#uploadSection');
-  const fileInput = $('#fileInput');
-
-  fileInput.on('change', function() {
-    Array.from(this.files).forEach(file => uploadFile(file));
-  });
-
-  // 拖拽支持
-  dropArea.on('dragover', e => { e.preventDefault(); dropArea.css('border-color', '#5cb85c'); });
-  dropArea.on('dragleave', () => dropArea.css('border-color', '#337ab7'));
-  dropArea.on('drop', e => {
-    e.preventDefault();
-    Array.from(e.originalEvent.dataTransfer.files).forEach(file => uploadFile(file));
-  });
-
-  // 粘贴上传
-  document.addEventListener('paste', e => {
-    const items = e.clipboardData.items;
-    for (let item of items) {
-      if (item.type.indexOf('image') !== -1) {
-        uploadFile(item.getAsFile());
-      }
-    }
-  });
+function copy(text) {
+  navigator.clipboard.writeText(text);
+  alert('已复制直链！');
 }
 
-function renderTable() {
-  let html = '';
-  filesData.forEach((f, index) => {
-    let preview = '';
-    if (f.isAudio) {
-      preview = `<audio controls src="${f.url}"></audio>`;
-    }
-    html += `
-      <tr>
-        <td>${index+1}</td>
-        <td>
-          <a href="${f.url}" target="_blank">下载</a> | 
-          <a href="#" onclick="copyLink('${f.url}')">复制直链</a>
-        </td>
-        <td><i class="fa fa-file${f.isAudio ? '-audio' : ''}-o"></i> ${f.name}</td>
-        <td>${f.size}</td>
-        <td><font color="blue">${f.ext}</font></td>
-        <td>${f.time}</td>
-      </tr>
-      <tr><td colspan="6">${preview}</td></tr>
-    `;
-  });
-  $('#fileListBody').html(html);
-}
-
-function copyLink(url) {
-  navigator.clipboard.writeText(url).then(() => alert('直链已复制到剪贴板！'));
-}
-
-function filterTable() {
-  const keyword = $('#searchInput').val().toLowerCase();
-  $('#fileListBody tr').each(function() {
-    const text = $(this).text().toLowerCase();
-    $(this).toggle(text.includes(keyword));
-  });
-}
-
-// 加载已有文件（可选进阶：从 GitHub 获取目录内容）
-async function loadFiles() {
-  // 目前简化版：本地显示新上传的
-  // 如果需要自动加载所有文件，可后续添加 GitHub Tree API
-  renderTable();
-}
+// 事件绑定
+document.getElementById('fileInput').addEventListener('change', e => {
+  Array.from(e.target.files).forEach(uploadFile);
+});
 </script>
-
 </body>
 </html>

@@ -10,8 +10,16 @@
     body { background: #f4f4f4; font-family: "Microsoft YaHei", Arial, sans-serif; }
     .navbar { background: #006400; color: white; }
     .well { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .upload-area { border: 3px dashed #006400; padding: 60px 20px; text-align: center; margin: 20px 0; border-radius: 8px; background: #fafafa; }
+    .upload-area { 
+      border: 3px dashed #006400; 
+      padding: 60px 20px; 
+      text-align: center; 
+      margin: 20px 0; 
+      border-radius: 8px; 
+      background: #fafafa; 
+    }
     .upload-area:hover { border-color: #4CAF50; }
+    audio { width: 100%; margin: 10px 0; }
   </style>
 </head>
 <body>
@@ -28,7 +36,7 @@
 
     <div class="upload-area">
       <h4><i class="fa fa-cloud-upload"></i> 拖拽或点击上传（支持图片、音乐）</h4>
-      <p style="color:#666;">推荐单文件 < 50MB</p>
+      <p style="color:#666;">推荐单文件 &lt; 50MB（音乐建议先压缩）</p>
       <input type="file" id="fileInput" multiple style="display:none;">
       <button class="btn btn-success btn-lg" onclick="document.getElementById('fileInput').click()">
         选择文件上传
@@ -54,27 +62,39 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
+// ================== 配置区 ==================
+// 在 Vercel 项目设置 → Environment Variables 中添加下面这行（非常重要！）
+const BLOB_TOKEN = "你的 Vercel Blob Read/Write Token";   // ← 先在 Vercel 设置环境变量
+
 async function uploadFile(file) {
+  if (!BLOB_TOKEN || BLOB_TOKEN === "你的 Vercel Blob Read/Write Token") {
+    alert("请先在 Vercel 项目设置中添加 BLOB_TOKEN 环境变量！");
+    return;
+  }
+
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const res = await fetch('/api/upload', {
+    const res = await fetch('https://blob.vercel-storage.com/upload', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${BLOB_TOKEN}`
+      },
       body: formData
     });
 
     if (res.ok) {
       const data = await res.json();
-      addToTable(data.name, data.url, (data.size / 1024 / 1024).toFixed(2) + ' MB');
-      alert(`✅ 上传成功！\n直链：${data.url}`);
+      addToTable(file.name, data.url, (file.size / 1024 / 1024).toFixed(2) + ' MB');
+      alert(`✅ 上传成功！\n直链：${data.url}\n\n可直接用于音乐外链播放`);
     } else {
-      const err = await res.json();
-      alert('上传失败：' + (err.message || '未知错误'));
+      const err = await res.text();
+      alert('上传失败：' + err);
     }
   } catch (e) {
     console.error(e);
-    alert('网络错误，请检查控制台（F12）');
+    alert('上传异常，请按 F12 查看控制台详情');
   }
 }
 
@@ -85,7 +105,7 @@ function addToTable(name, url, size) {
     <td>${tbody.children.length + 1}</td>
     <td>
       <a href="${url}" target="_blank">下载</a> | 
-      <a href="#" onclick="copyLink('${url}'); return false;">复制直链</a>
+      <a href="#" onclick="copyLink('${url}');return false;">复制直链</a>
     </td>
     <td>${name}</td>
     <td>${size}</td>
@@ -98,7 +118,7 @@ function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
 }
 
-// 绑定上传事件
+// 事件绑定
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
 });

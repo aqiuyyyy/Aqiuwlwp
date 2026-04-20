@@ -1,4 +1,4 @@
-import { handleUpload } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 
 export const config = {
   api: {
@@ -7,23 +7,30 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const jsonResponse = await handleUpload({
-      req,
-      onBeforeGenerateToken: async (pathname) => {
-        return {
-          allowedContentTypes: ['image/*', 'audio/*', 'application/*', 'text/*'],
-          tokenPayload: JSON.stringify({}), // 可放自定义数据
-        };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('Upload completed:', blob.url);
-      },
+    const formData = await req.formData();
+    const file = formData.get('file');
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    const blob = await put(file.name, file, {
+      access: 'public',        // 公开直链（音乐外链可用）
+      addRandomSuffix: true,   // 防止同名覆盖
     });
 
-    return res.status(200).json(jsonResponse);
+    return res.status(200).json({
+      url: blob.url,
+      name: file.name,
+      size: file.size
+    });
   } catch (error) {
-    console.error(error);
-    return res.status(400).json({ error: error.message });
+    console.error('Upload error:', error);
+    return res.status(500).json({ error: error.message || 'Upload failed' });
   }
 }

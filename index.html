@@ -9,7 +9,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #f0f2f5; font-family: "Microsoft YaHei", Arial, sans-serif; }
 
-    /* 顶部导航 */
     .navbar {
       background: #00897b;
       padding: 0 20px;
@@ -25,7 +24,6 @@
 
     .container { max-width: 960px; margin: 30px auto; padding: 0 16px; }
 
-    /* 上传区 */
     .upload-card {
       background: white;
       border-radius: 8px;
@@ -60,7 +58,6 @@
     }
     .btn-upload:hover { background: #00796b; }
 
-    /* 进度条 */
     .progress-wrap { display: none; margin-top: 16px; }
     .progress-bar {
       height: 6px;
@@ -76,7 +73,6 @@
     }
     .progress-text { font-size: 12px; color: #666; margin-top: 4px; }
 
-    /* 文件列表 */
     .list-card {
       background: white;
       border-radius: 8px;
@@ -119,7 +115,6 @@
     .btn-del { color: #e53935; border-color: #e53935; background: white; }
     .btn-del:hover { background: #ffebee; }
 
-    /* 预览弹窗 */
     .modal-mask {
       display: none;
       position: fixed; inset: 0;
@@ -174,6 +169,18 @@
     }
 
     .empty { text-align: center; padding: 40px; color: #999; }
+
+    .footer {
+      text-align: center;
+      padding: 24px;
+      color: #999;
+      font-size: 13px;
+      margin-top: 24px;
+    }
+    .footer a { color: #00897b; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    #runtime { color: #00897b; }
+
     .toast {
       position: fixed;
       bottom: 30px;
@@ -200,7 +207,6 @@
 </div>
 
 <div class="container">
-  <!-- 上传区 -->
   <div class="upload-card">
     <div class="upload-area" id="uploadArea">
       <i class="fa fa-cloud-upload"></i>
@@ -217,11 +223,14 @@
     </div>
   </div>
 
-  <!-- 文件列表 -->
   <div class="list-card">
     <div class="list-header"><i class="fa fa-list"></i> 文件列表</div>
     <div id="fileList"><div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件</p></div></div>
   </div>
+</div>
+
+<div class="footer">
+  Copyright © 2026 <a href="./">阿湫外链网盘</a> 本站已安全运行：<span id="runtime"></span>
 </div>
 
 <!-- 预览弹窗 -->
@@ -238,37 +247,47 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// 建站日期，改成你自己的
+const startDate = new Date('2025-03-016T00:00:00');
+function updateRuntime() {
+  const now = new Date();
+  const diff = now - startDate;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  document.getElementById('runtime').textContent =
+    `${days}天${hours}时${minutes}分${seconds}秒`;
+}
+updateRuntime();
+setInterval(updateRuntime, 1000);
+
 function getFileIcon(name, type) {
   if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(name) || type.startsWith('image/')) return '🖼️';
   if (/\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(name) || type.startsWith('audio/')) return '🎵';
   if (/\.(mp4|avi|mov|mkv|webm)$/i.test(name) || type.startsWith('video/')) return '🎬';
   return '📄';
 }
-
 function isImage(name, type) {
   return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(name) || type.startsWith('image/');
 }
 function isAudio(name, type) {
   return /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(name) || type.startsWith('audio/');
 }
-
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / 1024 / 1024).toFixed(2) + ' MB';
 }
-
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.style.display = 'block';
   setTimeout(() => t.style.display = 'none', 2000);
 }
-
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => showToast('✅ 已复制到剪贴板'));
 }
-
 function openModal(record) {
   document.getElementById('modalTitle').textContent = record.name;
   const body = document.getElementById('modalBody');
@@ -297,13 +316,11 @@ function openModal(record) {
   `;
   document.getElementById('modal').classList.add('show');
 }
-
 function closeModal(e) {
   if (e.target === document.getElementById('modal')) {
     document.getElementById('modal').classList.remove('show');
   }
 }
-
 function renderFiles(files) {
   const container = document.getElementById('fileList');
   if (!files || files.length === 0) {
@@ -325,7 +342,6 @@ function renderFiles(files) {
     </div>
   `).join('');
 }
-
 async function loadFiles() {
   try {
     const res = await fetch('/api/files');
@@ -335,7 +351,6 @@ async function loadFiles() {
     console.error(e);
   }
 }
-
 async function deleteFile(id, url) {
   if (!confirm('确定删除这个文件吗？')) return;
   try {
@@ -354,7 +369,6 @@ async function deleteFile(id, url) {
     showToast('删除失败：' + e.message);
   }
 }
-
 async function uploadFile(file) {
   const progressWrap = document.getElementById('progressWrap');
   const progressFill = document.getElementById('progressFill');
@@ -363,7 +377,6 @@ async function uploadFile(file) {
   progressFill.style.width = '0%';
   progressText.textContent = `正在上传：${file.name}`;
 
-  // 模拟进度
   let progress = 0;
   const timer = setInterval(() => {
     progress = Math.min(progress + 10, 85);
@@ -379,19 +392,14 @@ async function uploadFile(file) {
       },
       body: file,
     });
-
     clearInterval(timer);
-
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || '上传失败');
     }
-
     progressFill.style.width = '100%';
     progressText.textContent = '上传成功！';
     setTimeout(() => { progressWrap.style.display = 'none'; }, 1500);
-
-    const { record } = await res.json();
     showToast('✅ 上传成功！');
     loadFiles();
   } catch (e) {
@@ -401,7 +409,6 @@ async function uploadFile(file) {
   }
 }
 
-// 事件绑定
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
   e.target.value = '';
@@ -421,7 +428,6 @@ uploadArea.addEventListener('drop', (e) => {
   Array.from(e.dataTransfer.files).forEach(uploadFile);
 });
 
-// 初始加载
 loadFiles();
 </script>
 </body>

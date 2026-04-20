@@ -56,44 +56,26 @@
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
 async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
   try {
-    // 第一步：从你的后端获取上传 Token
-    const tokenRes = await fetch('/api/upload', {
+    const res = await fetch('/api/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filename: file.name })
+      body: formData
     });
 
-    if (!tokenRes.ok) throw new Error('获取上传权限失败');
+    const data = await res.json();
 
-    const { url } = await tokenRes.json();   // handleUpload 返回的上传地址
-
-    // 第二步：使用 @vercel/blob/client 的 upload 函数（但这里用原生方式简化）
-    // 实际我们用 handleUpload 已经处理，这里用 fetch 模拟直传
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const uploadRes = await fetch(url, {
-      method: 'PUT',
-      body: file,   // 直接传 file
-      headers: {
-        'x-vercel-blob-upload': 'true'   // Vercel 内部标识
-      }
-    });
-
-    if (uploadRes.ok) {
-      // 实际返回的 blob url 需要从响应中获取，这里简化处理
-      // 更准确的方式是使用官方 client 库，但为了单文件我们用下面方式
-      const blobUrl = uploadRes.url || `https://你的项目.blob.vercel-storage.com/${file.name}`; // 实际会返回真实 url
-
-      addToTable(file.name, blobUrl, (file.size / 1024 / 1024).toFixed(2) + ' MB');
-      alert(`✅ 上传成功！\n直链：${blobUrl}`);
+    if (res.ok) {
+      addToTable(data.name, data.url, (data.size / 1024 / 1024).toFixed(2) + ' MB');
+      alert(`✅ 上传成功！\n直链：${data.url}\n\n音乐可直接用此链接外链播放`);
     } else {
-      alert('上传失败，请查看控制台');
+      alert('上传失败：' + (data.error || '未知错误'));
     }
   } catch (e) {
     console.error(e);
-    alert('上传异常：' + e.message + '\n请按 F12 查看详情');
+    alert('上传异常，请按 F12 查看控制台详细错误');
   }
 }
 
@@ -110,13 +92,18 @@ function addToTable(name, url, size) {
     <td>${size}</td>
     <td>${new Date().toLocaleString('zh-CN')}</td>
   `;
+  // 添加音乐播放器
+  if (name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+    row.innerHTML += `<tr><td colspan="5"><audio controls src="${url}"></audio></td></tr>`;
+  }
   tbody.appendChild(row);
 }
 
 function copyLink(url) {
-  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
+  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制到剪贴板！'));
 }
 
+// 绑定上传
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
 });

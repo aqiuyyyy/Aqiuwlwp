@@ -33,4 +33,7 @@ export default async function handler(req, res) {
     console.error('Upload error:', error);
     return res.status(500).json({ error: error.message || 'Upload failed' });
   }
+  export default async function handler(req, res) {
+  res.status(500).send('Server error - please check Vercel Functions Logs');
+}
 }

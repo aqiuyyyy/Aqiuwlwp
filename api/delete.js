@@ -1,17 +1,19 @@
 import { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
-
 const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  const { id, url } = req.body;
+  const username = req.headers['x-username'];
+  if (!username) return res.status(401).json({ error: '请先登录' });
+
   try {
-    const { id, url } = req.body;
-    const raw = await redis.lrange('files', 0, -1);
+    const raw = await redis.lrange(`files:${username}`, 0, -1);
     for (const item of raw) {
       const record = typeof item === 'string' ? JSON.parse(item) : item;
       if (record.id === id) {
-        await redis.lrem('files', 1, item);
+        await redis.lrem(`files:${username}`, 1, item);
         break;
       }
     }

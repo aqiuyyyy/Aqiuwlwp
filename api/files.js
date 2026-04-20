@@ -1,9 +1,11 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   try {
-    const raw = await kv.lrange('files', 0, -1);
+    const raw = await redis.lrange('files', 0, -1);
     const files = raw.map(item =>
       typeof item === 'string' ? JSON.parse(item) : item
     );

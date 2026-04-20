@@ -6,22 +6,19 @@
   <title>阿湫外链网盘</title>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://s4.zstatic.net/ajax/libs/bootstrap-material-design/0.5.10/css/bootstrap-material-design.min.css" rel="stylesheet">
-
   <style>
-    body { background:#f8f8f8; font-family:"Microsoft YaHei",Arial,sans-serif; }
-    .navbar { background:#337ab7; }
-    .navbar-brand { color:white !important; font-weight:bold; }
-    .well { background:white; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
-    .upload-area { border:3px dashed #337ab7; padding:50px; text-align:center; margin:20px 0; border-radius:6px; background:#fafafa; }
-    .upload-area:hover { border-color:#5cb85c; background:#f0f8ff; }
+    body { background: #f4f4f4; font-family: "Microsoft YaHei", Arial, sans-serif; }
+    .navbar { background: #006400; color: white; }
+    .well { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .upload-area { border: 3px dashed #006400; padding: 60px 20px; text-align: center; margin: 20px 0; border-radius: 8px; background: #fafafa; }
+    .upload-area:hover { border-color: #4CAF50; }
   </style>
 </head>
 <body>
 
 <div class="navbar navbar-default">
   <div class="container">
-    <a class="navbar-brand" href="./">阿湫外链网盘</a>
+    <a class="navbar-brand" href="./" style="color:white;">阿湫外链网盘</a>
   </div>
 </div>
 
@@ -30,15 +27,24 @@
     <h2>文件列表</h2>
 
     <div class="upload-area">
-      <h4>拖拽或点击上传（支持图片、音乐）</h4>
+      <h4><i class="fa fa-cloud-upload"></i> 拖拽或点击上传（支持图片、音乐）</h4>
+      <p style="color:#666;">推荐单文件 < 50MB</p>
       <input type="file" id="fileInput" multiple style="display:none;">
-      <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">选择文件上传</button>
+      <button class="btn btn-success btn-lg" onclick="document.getElementById('fileInput').click()">
+        选择文件上传
+      </button>
     </div>
 
     <div class="table-responsive">
-      <table class="table table-striped" id="fileTable">
+      <table class="table table-striped table-hover">
         <thead>
-          <tr><th>#</th><th>操作</th><th>文件名</th><th>大小</th><th>上传时间</th></tr>
+          <tr>
+            <th>#</th>
+            <th>操作</th>
+            <th>文件名</th>
+            <th>大小</th>
+            <th>上传时间</th>
+          </tr>
         </thead>
         <tbody id="fileList"></tbody>
       </table>
@@ -47,10 +53,7 @@
 </div>
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-<script src="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
-
 <script>
-// 上传函数
 async function uploadFile(file) {
   const formData = new FormData();
   formData.append('file', file);
@@ -63,23 +66,27 @@ async function uploadFile(file) {
 
     if (res.ok) {
       const data = await res.json();
-      alert(`✅ 上传成功！直链：${data.url}`);
-      addToTable(file.name, data.url, (file.size/1024/1024).toFixed(2)+' MB');
+      addToTable(data.name, data.url, (data.size / 1024 / 1024).toFixed(2) + ' MB');
+      alert(`✅ 上传成功！\n直链：${data.url}`);
     } else {
-      alert('上传失败：' + await res.text());
+      const err = await res.json();
+      alert('上传失败：' + (err.message || '未知错误'));
     }
-  } catch(e) {
-    alert('网络错误：' + e.message);
+  } catch (e) {
+    console.error(e);
+    alert('网络错误，请检查控制台（F12）');
   }
 }
 
-// 添加到表格
 function addToTable(name, url, size) {
   const tbody = document.getElementById('fileList');
   const row = document.createElement('tr');
   row.innerHTML = `
     <td>${tbody.children.length + 1}</td>
-    <td><a href="${url}" target="_blank">下载</a> | <a href="#" onclick="copy('${url}')">复制直链</a></td>
+    <td>
+      <a href="${url}" target="_blank">下载</a> | 
+      <a href="#" onclick="copyLink('${url}'); return false;">复制直链</a>
+    </td>
     <td>${name}</td>
     <td>${size}</td>
     <td>${new Date().toLocaleString('zh-CN')}</td>
@@ -87,13 +94,12 @@ function addToTable(name, url, size) {
   tbody.appendChild(row);
 }
 
-function copy(text) {
-  navigator.clipboard.writeText(text);
-  alert('已复制直链！');
+function copyLink(url) {
+  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
 }
 
-// 事件绑定
-document.getElementById('fileInput').addEventListener('change', e => {
+// 绑定上传事件
+document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
 });
 </script>

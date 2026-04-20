@@ -34,7 +34,6 @@
     }
     .btn-nav:hover { background: rgba(255,255,255,0.3); }
 
-    /* 弹窗通用 */
     .overlay {
       display: none;
       position: fixed; inset: 0;
@@ -83,7 +82,6 @@
 
     .container { max-width: 960px; margin: 30px auto; padding: 0 16px; }
 
-    /* 未登录提示 */
     .guest-tip {
       background: #e0f2f1;
       border: 1px solid #b2dfdb;
@@ -151,7 +149,6 @@
     .btn-del { color: #e53935; border-color: #e53935; }
     .btn-del:hover { background: #ffebee; }
 
-    /* 预览弹窗 */
     .modal-mask { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
     .modal-mask.show { display: flex; }
     .modal-box { background: white; border-radius: 8px; max-width: 800px; width: 90%; overflow: hidden; }
@@ -218,7 +215,7 @@
 </div>
 
 <div class="container">
-  <!-- 游客提示 -->
+  <!-- 游客提示（未登录时显示） -->
   <div class="guest-tip" id="guestTip">
     <i class="fa fa-info-circle"></i>
     你当前未登录，仅能浏览文件。<a onclick="showLoginModal()">登录</a> 或 <a onclick="showRegisterModal()">注册</a> 后可上传和管理文件。
@@ -307,7 +304,6 @@ function showRegisterModal() {
   document.getElementById('registerError').textContent = '';
 }
 
-// 点击遮罩关闭
 document.getElementById('loginOverlay').addEventListener('click', (e) => {
   if (e.target === document.getElementById('loginOverlay')) document.getElementById('loginOverlay').classList.remove('show');
 });
@@ -377,7 +373,7 @@ function logout() {
   currentUser = null;
   sessionStorage.removeItem('username');
   updateNavUI();
-  renderFiles([]);
+  loadFiles();
   showToast('已退出登录');
 }
 
@@ -436,14 +432,10 @@ function closeModal(e) {
   if (e.target === document.getElementById('modal')) document.getElementById('modal').classList.remove('show');
 }
 
-function renderFiles(files) {
+function renderFiles(files, isOwner) {
   const container = document.getElementById('fileList');
-  if (!currentUser) {
-    container.innerHTML = '<div class="empty"><i class="fa fa-lock" style="font-size:32px;"></i><p style="margin-top:8px;">登录后查看你的文件</p></div>';
-    return;
-  }
   if (!files || files.length === 0) {
-    container.innerHTML = '<div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件，快去上传吧</p></div>';
+    container.innerHTML = '<div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件</p></div>';
     return;
   }
   container.innerHTML = files.map(f => `
@@ -451,23 +443,23 @@ function renderFiles(files) {
       <div class="file-icon">${getFileIcon(f.name, f.type || '')}</div>
       <div class="file-info">
         <div class="file-name" title="${f.name}">${f.name}</div>
-        <div class="file-meta">${formatSize(f.size)} · ${new Date(f.uploadedAt).toLocaleString('zh-CN')}</div>
+        <div class="file-meta">${formatSize(f.size)} · ${new Date(f.uploadedAt).toLocaleString('zh-CN')}${f.owner ? ' · ' + f.owner : ''}</div>
       </div>
       <div class="file-actions">
         <a class="btn-sm btn-view" href="javascript:void(0)" onclick='openModal(${JSON.stringify(f)})'>查看</a>
         <a class="btn-sm btn-copy" href="javascript:void(0)" onclick="copyText('${f.url}')">复制链接</a>
-        <a class="btn-sm btn-del" href="javascript:void(0)" onclick="deleteFile('${f.id}','${f.url}')">删除</a>
+        ${isOwner ? `<a class="btn-sm btn-del" href="javascript:void(0)" onclick="deleteFile('${f.id}','${f.url}')">删除</a>` : ''}
       </div>
     </div>
   `).join('');
 }
 
 async function loadFiles() {
-  if (!currentUser) { renderFiles([]); return; }
   try {
-    const res = await fetch('/api/files', { headers: { 'x-username': currentUser } });
+    const headers = currentUser ? { 'x-username': currentUser } : {};
+    const res = await fetch('/api/files', { headers });
     const files = await res.json();
-    renderFiles(files);
+    renderFiles(files, !!currentUser);
   } catch (e) { console.error(e); }
 }
 
@@ -482,7 +474,7 @@ async function deleteFile(id, url) {
     document.getElementById('item-' + id)?.remove();
     showToast('🗑️ 文件已删除');
     const list = document.getElementById('fileList');
-    if (list.querySelectorAll('.file-item').length === 0) renderFiles([]);
+    if (list.querySelectorAll('.file-item').length === 0) renderFiles([], true);
   } catch (e) { showToast('删除失败：' + e.message); }
 }
 
@@ -533,7 +525,6 @@ uploadArea.addEventListener('drop', (e) => {
   Array.from(e.dataTransfer.files).forEach(uploadFile);
 });
 
-// 初始化
 updateNavUI();
 loadFiles();
 </script>

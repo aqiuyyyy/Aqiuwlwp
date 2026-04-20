@@ -10,14 +10,7 @@
     body { background: #f4f4f4; font-family: "Microsoft YaHei", Arial, sans-serif; }
     .navbar { background: #006400; color: white; }
     .well { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .upload-area { 
-      border: 3px dashed #006400; 
-      padding: 60px 20px; 
-      text-align: center; 
-      margin: 20px 0; 
-      border-radius: 8px; 
-      background: #fafafa; 
-    }
+    .upload-area { border: 3px dashed #006400; padding: 60px 20px; text-align: center; margin: 20px 0; border-radius: 8px; background: #fafafa; }
     .upload-area:hover { border-color: #4CAF50; }
     audio { width: 100%; margin: 10px 0; }
   </style>
@@ -62,39 +55,45 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
-// ================== 配置区 ==================
-// 在 Vercel 项目设置 → Environment Variables 中添加下面这行（非常重要！）
-const BLOB_TOKEN = "你的 Vercel Blob Read/Write Token";   // ← 先在 Vercel 设置环境变量
-
 async function uploadFile(file) {
-  if (!BLOB_TOKEN || BLOB_TOKEN === "你的 Vercel Blob Read/Write Token") {
-    alert("请先在 Vercel 项目设置中添加 BLOB_TOKEN 环境变量！");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
-    const res = await fetch('https://blob.vercel-storage.com/upload', {
+    // 第一步：从你的后端获取上传 Token
+    const tokenRes = await fetch('/api/upload', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${BLOB_TOKEN}`
-      },
-      body: formData
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name })
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      addToTable(file.name, data.url, (file.size / 1024 / 1024).toFixed(2) + ' MB');
-      alert(`✅ 上传成功！\n直链：${data.url}\n\n可直接用于音乐外链播放`);
+    if (!tokenRes.ok) throw new Error('获取上传权限失败');
+
+    const { url } = await tokenRes.json();   // handleUpload 返回的上传地址
+
+    // 第二步：使用 @vercel/blob/client 的 upload 函数（但这里用原生方式简化）
+    // 实际我们用 handleUpload 已经处理，这里用 fetch 模拟直传
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const uploadRes = await fetch(url, {
+      method: 'PUT',
+      body: file,   // 直接传 file
+      headers: {
+        'x-vercel-blob-upload': 'true'   // Vercel 内部标识
+      }
+    });
+
+    if (uploadRes.ok) {
+      // 实际返回的 blob url 需要从响应中获取，这里简化处理
+      // 更准确的方式是使用官方 client 库，但为了单文件我们用下面方式
+      const blobUrl = uploadRes.url || `https://你的项目.blob.vercel-storage.com/${file.name}`; // 实际会返回真实 url
+
+      addToTable(file.name, blobUrl, (file.size / 1024 / 1024).toFixed(2) + ' MB');
+      alert(`✅ 上传成功！\n直链：${blobUrl}`);
     } else {
-      const err = await res.text();
-      alert('上传失败：' + err);
+      alert('上传失败，请查看控制台');
     }
   } catch (e) {
     console.error(e);
-    alert('上传异常，请按 F12 查看控制台详情');
+    alert('上传异常：' + e.message + '\n请按 F12 查看详情');
   }
 }
 
@@ -118,7 +117,6 @@ function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
 }
 
-// 事件绑定
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
 });

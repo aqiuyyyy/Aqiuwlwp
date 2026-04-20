@@ -1,7 +1,7 @@
-const GITHUB_TOKEN = 'ghp_你的PersonalAccessToken';   // ← 必须修改
-const OWNER = 'aqiuyyyy';
-const REPO = 'Aqiuwlwp';        // 例如 my-picbed
-const BRANCH = 'main';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || 'ghp_你的Token'; // 本地测试用
+const OWNER = process.env.OWNER || '你的用户名';
+const REPO = process.env.REPO || '你的仓库名';
+const BRANCH = process.env.BRANCH || 'main';
 
 const dropArea = document.getElementById('dropArea');
 const fileInput = document.getElementById('fileInput');

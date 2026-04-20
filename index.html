@@ -5,52 +5,371 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>阿湫外链网盘</title>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
-  <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background: #f4f4f4; font-family: "Microsoft YaHei", Arial, sans-serif; }
-    .navbar { background: #006400; color: white; }
-    .well { background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .upload-area { border: 3px dashed #006400; padding: 60px 20px; text-align: center; margin: 20px 0; border-radius: 8px; background: #fafafa; }
-    .upload-area:hover { border-color: #4CAF50; }
-    audio { width: 100%; margin: 10px 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f0f2f5; font-family: "Microsoft YaHei", Arial, sans-serif; }
+
+    /* 顶部导航 */
+    .navbar {
+      background: #00897b;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    .navbar a { color: white; text-decoration: none; font-size: 20px; font-weight: bold; }
+    .nav-links { margin-left: 40px; display: flex; gap: 24px; }
+    .nav-links a { color: rgba(255,255,255,0.85); font-size: 14px; text-decoration: none; }
+    .nav-links a:hover { color: white; }
+
+    .container { max-width: 960px; margin: 30px auto; padding: 0 16px; }
+
+    /* 上传区 */
+    .upload-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 30px;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .upload-area {
+      border: 2px dashed #00897b;
+      border-radius: 8px;
+      padding: 50px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #f9fffe;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: #00bfa5;
+      background: #e0f2f1;
+    }
+    .upload-area i { font-size: 48px; color: #00897b; margin-bottom: 12px; display: block; }
+    .upload-area p { color: #666; margin-top: 8px; font-size: 13px; }
+    .btn-upload {
+      margin-top: 16px;
+      background: #00897b;
+      color: white;
+      border: none;
+      padding: 10px 32px;
+      border-radius: 4px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-upload:hover { background: #00796b; }
+
+    /* 进度条 */
+    .progress-wrap { display: none; margin-top: 16px; }
+    .progress-bar {
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #00897b;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .progress-text { font-size: 12px; color: #666; margin-top: 4px; }
+
+    /* 文件列表 */
+    .list-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .list-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      font-weight: bold;
+      color: #333;
+      font-size: 15px;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid #f5f5f5;
+      gap: 12px;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-icon { font-size: 28px; width: 40px; text-align: center; flex-shrink: 0; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name { font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-meta { font-size: 12px; color: #999; margin-top: 3px; }
+    .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-sm {
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      border: 1px solid;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-view { color: #00897b; border-color: #00897b; background: white; }
+    .btn-view:hover { background: #e0f2f1; }
+    .btn-copy { color: #1976d2; border-color: #1976d2; background: white; }
+    .btn-copy:hover { background: #e3f2fd; }
+    .btn-del { color: #e53935; border-color: #e53935; background: white; }
+    .btn-del:hover { background: #ffebee; }
+
+    /* 预览弹窗 */
+    .modal-mask {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-mask.show { display: flex; }
+    .modal-box {
+      background: white;
+      border-radius: 8px;
+      max-width: 800px;
+      width: 90%;
+      overflow: hidden;
+    }
+    .modal-header {
+      background: #00897b;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+    .modal-close { cursor: pointer; font-size: 20px; }
+    .modal-body { padding: 20px; text-align: center; }
+    .modal-body img { max-width: 100%; max-height: 70vh; border-radius: 4px; }
+    .modal-body audio { width: 100%; margin: 10px 0; }
+    .modal-links { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; text-align: left; }
+    .link-row { display: flex; align-items: center; gap: 8px; }
+    .link-label { font-size: 13px; color: #666; width: 70px; flex-shrink: 0; }
+    .link-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #333;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .btn-copy2 {
+      padding: 6px 14px;
+      background: #00897b;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .empty { text-align: center; padding: 40px; color: #999; }
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      color: white;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 9999;
+      display: none;
+    }
   </style>
 </head>
 <body>
-<div class="navbar navbar-default">
-  <div class="container">
-    <a class="navbar-brand" href="./" style="color:white;">阿湫外链网盘</a>
+
+<div class="navbar">
+  <a href="./">阿湫外链网盘</a>
+  <div class="nav-links">
+    <a href="./">文件列表</a>
+    <a href="./">上传文件</a>
   </div>
 </div>
+
 <div class="container">
-  <div class="well">
-    <h2>文件列表</h2>
-    <div class="upload-area">
-      <h4><i class="fa fa-cloud-upload"></i> 拖拽或点击上传（支持图片、音乐）</h4>
-      <p style="color:#666;">推荐单文件 &lt; 50MB（音乐建议先压缩）</p>
+  <!-- 上传区 -->
+  <div class="upload-card">
+    <div class="upload-area" id="uploadArea">
+      <i class="fa fa-cloud-upload"></i>
+      <div style="font-size:16px;color:#333;">拖拽文件到此处或点击上传</div>
+      <p>支持图片、音乐、视频等，推荐单文件 &lt; 50MB</p>
       <input type="file" id="fileInput" multiple style="display:none;">
-      <button class="btn btn-success btn-lg" onclick="document.getElementById('fileInput').click()">
+      <button class="btn-upload" onclick="document.getElementById('fileInput').click()">
         选择文件上传
       </button>
     </div>
-    <div class="table-responsive">
-      <table class="table table-striped table-hover">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>操作</th>
-            <th>文件名</th>
-            <th>大小</th>
-            <th>上传时间</th>
-          </tr>
-        </thead>
-        <tbody id="fileList"></tbody>
-      </table>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText">上传中...</div>
     </div>
   </div>
+
+  <!-- 文件列表 -->
+  <div class="list-card">
+    <div class="list-header"><i class="fa fa-list"></i> 文件列表</div>
+    <div id="fileList"><div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件</p></div></div>
+  </div>
 </div>
-<script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+<!-- 预览弹窗 -->
+<div class="modal-mask" id="modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="modalTitle">文件查看</span>
+      <span class="modal-close" onclick="document.getElementById('modal').classList.remove('show')">✕</span>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
+function getFileIcon(name, type) {
+  if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(name) || type.startsWith('image/')) return '🖼️';
+  if (/\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(name) || type.startsWith('audio/')) return '🎵';
+  if (/\.(mp4|avi|mov|mkv|webm)$/i.test(name) || type.startsWith('video/')) return '🎬';
+  return '📄';
+}
+
+function isImage(name, type) {
+  return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(name) || type.startsWith('image/');
+}
+function isAudio(name, type) {
+  return /\.(mp3|wav|ogg|m4a|flac|aac)$/i.test(name) || type.startsWith('audio/');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2000);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => showToast('✅ 已复制到剪贴板'));
+}
+
+function openModal(record) {
+  document.getElementById('modalTitle').textContent = record.name;
+  const body = document.getElementById('modalBody');
+  let preview = '';
+  if (isImage(record.name, record.type)) {
+    preview = `<img src="${record.url}" alt="${record.name}">`;
+  } else if (isAudio(record.name, record.type)) {
+    preview = `<audio controls src="${record.url}"></audio>`;
+  } else {
+    preview = `<p style="color:#999;padding:20px;">此文件类型不支持预览</p>`;
+  }
+  body.innerHTML = `
+    ${preview}
+    <div class="modal-links">
+      <div class="link-row">
+        <span class="link-label">文件链接：</span>
+        <input class="link-input" value="${record.url}" readonly>
+        <button class="btn-copy2" onclick="copyText('${record.url}')">复制</button>
+      </div>
+      <div class="link-row">
+        <span class="link-label">下载链接：</span>
+        <input class="link-input" value="${record.url}" readonly>
+        <button class="btn-copy2" onclick="copyText('${record.url}')">复制</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('show');
+  }
+}
+
+function renderFiles(files) {
+  const container = document.getElementById('fileList');
+  if (!files || files.length === 0) {
+    container.innerHTML = '<div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件</p></div>';
+    return;
+  }
+  container.innerHTML = files.map(f => `
+    <div class="file-item" id="item-${f.id}">
+      <div class="file-icon">${getFileIcon(f.name, f.type || '')}</div>
+      <div class="file-info">
+        <div class="file-name" title="${f.name}">${f.name}</div>
+        <div class="file-meta">${formatSize(f.size)} · ${new Date(f.uploadedAt).toLocaleString('zh-CN')}</div>
+      </div>
+      <div class="file-actions">
+        <a class="btn-sm btn-view" href="javascript:void(0)" onclick='openModal(${JSON.stringify(f)})'>查看</a>
+        <a class="btn-sm btn-copy" href="javascript:void(0)" onclick="copyText('${f.url}')">复制链接</a>
+        <a class="btn-sm btn-del" href="javascript:void(0)" onclick="deleteFile('${f.id}','${f.url}')">删除</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadFiles() {
+  try {
+    const res = await fetch('/api/files');
+    const files = await res.json();
+    renderFiles(files);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function deleteFile(id, url) {
+  if (!confirm('确定删除这个文件吗？')) return;
+  try {
+    await fetch('/api/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, url }),
+    });
+    document.getElementById('item-' + id)?.remove();
+    showToast('🗑️ 文件已删除');
+    const list = document.getElementById('fileList');
+    if (list.children.length === 0) {
+      list.innerHTML = '<div class="empty"><i class="fa fa-inbox" style="font-size:32px;"></i><p style="margin-top:8px;">暂无文件</p></div>';
+    }
+  } catch (e) {
+    showToast('删除失败：' + e.message);
+  }
+}
+
 async function uploadFile(file) {
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  progressWrap.style.display = 'block';
+  progressFill.style.width = '0%';
+  progressText.textContent = `正在上传：${file.name}`;
+
+  // 模拟进度
+  let progress = 0;
+  const timer = setInterval(() => {
+    progress = Math.min(progress + 10, 85);
+    progressFill.style.width = progress + '%';
+  }, 200);
+
   try {
     const res = await fetch('/api/upload', {
       method: 'POST',
@@ -61,65 +380,49 @@ async function uploadFile(file) {
       body: file,
     });
 
+    clearInterval(timer);
+
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || '上传失败');
     }
 
-    const { url } = await res.json();
-    addToTable(file.name, url, (file.size / 1024 / 1024).toFixed(2) + ' MB');
-    alert('✅ 上传成功！\n直链：' + url);
+    progressFill.style.width = '100%';
+    progressText.textContent = '上传成功！';
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 1500);
+
+    const { record } = await res.json();
+    showToast('✅ 上传成功！');
+    loadFiles();
   } catch (e) {
-    console.error(e);
-    alert('上传失败：' + e.message);
+    clearInterval(timer);
+    progressWrap.style.display = 'none';
+    showToast('❌ 上传失败：' + e.message);
   }
 }
 
-function addToTable(name, url, size) {
-  const tbody = document.getElementById('fileList');
-  const isAudio = /\.(mp3|wav|ogg|m4a)$/i.test(name);
-  const row = document.createElement('tr');
-  row.innerHTML = `
-    <td>${tbody.children.length + 1}</td>
-    <td>
-      <a href="${url}" target="_blank">下载</a> | 
-      <a href="#" onclick="copyLink('${url}');return false;">复制直链</a>
-    </td>
-    <td>${name}</td>
-    <td>${size}</td>
-    <td>${new Date().toLocaleString('zh-CN')}</td>
-  `;
-  tbody.appendChild(row);
-  if (isAudio) {
-    const audioRow = document.createElement('tr');
-    audioRow.innerHTML = `<td colspan="5"><audio controls src="${url}"></audio></td>`;
-    tbody.appendChild(audioRow);
-  }
-}
-
-function copyLink(url) {
-  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
-}
-
-// 点击选择文件
+// 事件绑定
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
+  e.target.value = '';
 });
 
-// 拖拽上传
-const uploadArea = document.querySelector('.upload-area');
+const uploadArea = document.getElementById('uploadArea');
 uploadArea.addEventListener('dragover', (e) => {
   e.preventDefault();
-  uploadArea.style.borderColor = '#4CAF50';
+  uploadArea.classList.add('dragover');
 });
 uploadArea.addEventListener('dragleave', () => {
-  uploadArea.style.borderColor = '#006400';
+  uploadArea.classList.remove('dragover');
 });
 uploadArea.addEventListener('drop', (e) => {
   e.preventDefault();
-  uploadArea.style.borderColor = '#006400';
+  uploadArea.classList.remove('dragover');
   Array.from(e.dataTransfer.files).forEach(uploadFile);
 });
+
+// 初始加载
+loadFiles();
 </script>
 </body>
 </html>

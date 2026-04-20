@@ -1,5 +1,5 @@
 {
-  "name": "my-netdisk",
+  "name": "aqiu-netdisk",
   "version": "1.0.0",
   "dependencies": {
     "@vercel/blob": "^0.23.0"

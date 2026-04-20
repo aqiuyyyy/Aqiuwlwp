@@ -55,27 +55,28 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
+// Vercel Blob 客户端直传（最稳定方式）
 async function uploadFile(file) {
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const res = await fetch('/api/upload', {
+    const res = await fetch('/api/upload', {   // 后面我们会创建这个简单接口
       method: 'POST',
       body: formData
     });
 
-    const data = await res.json();
-
-    if (res.ok) {
-      addToTable(data.name, data.url, (data.size / 1024 / 1024).toFixed(2) + ' MB');
-      alert(`✅ 上传成功！\n直链：${data.url}\n\n音乐可直接用此链接外链播放`);
-    } else {
-      alert('上传失败：' + (data.error || '未知错误'));
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || 'Server error');
     }
+
+    const data = await res.json();
+    addToTable(data.name || file.name, data.url, (file.size / 1024 / 1024).toFixed(2) + ' MB');
+    alert(`✅ 上传成功！\n直链：${data.url}`);
   } catch (e) {
     console.error(e);
-    alert('上传异常，请按 F12 查看控制台详细错误');
+    alert('上传失败：' + e.message + '\n请看 F12 控制台');
   }
 }
 
@@ -92,18 +93,13 @@ function addToTable(name, url, size) {
     <td>${size}</td>
     <td>${new Date().toLocaleString('zh-CN')}</td>
   `;
-  // 添加音乐播放器
-  if (name.match(/\.(mp3|wav|ogg|m4a)$/i)) {
-    row.innerHTML += `<tr><td colspan="5"><audio controls src="${url}"></audio></td></tr>`;
-  }
   tbody.appendChild(row);
 }
 
 function copyLink(url) {
-  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制到剪贴板！'));
+  navigator.clipboard.writeText(url).then(() => alert('✅ 直链已复制！'));
 }
 
-// 绑定上传
 document.getElementById('fileInput').addEventListener('change', (e) => {
   Array.from(e.target.files).forEach(uploadFile);
 });

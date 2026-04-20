@@ -10,9 +10,9 @@ export default async function handler(req, res) {
   try {
     const jsonResponse = await handleUpload({
       req,
-      onBeforeGenerateToken: async (pathname) => ({
+      onBeforeGenerateToken: async () => ({
         allowedContentTypes: ['image/*', 'audio/*', 'video/*', 'application/*'],
-        access: 'public',           // 公开直链，音乐外链可用
+        access: 'public',
         addRandomSuffix: true,
       }),
       onUploadCompleted: async ({ blob }) => {
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json(jsonResponse);
   } catch (error) {
-    console.error('Token 生成失败:', error);
+    console.error(error);
     return res.status(400).json({ error: error.message });
   }
 }

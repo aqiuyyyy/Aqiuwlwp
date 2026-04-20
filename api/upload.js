@@ -1,31 +1,44 @@
-import { handleUpload } from '@vercel/blob/client';
+import { put } from '@vercel/blob';
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false,   // 必须关闭，否则大文件/音乐上传失败
   },
 };
 
 export default async function handler(req, res) {
+  // 处理 OPTIONS 预检请求（解决 CORS）
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    const jsonResponse = await handleUpload({
-      req,
-      onBeforeGenerateToken: async (pathname /* , clientPayload */) => {
-        // 这里可以加权限检查（目前允许所有人上传，适合个人网盘）
-        return {
-          allowedContentTypes: ['image/*', 'audio/*', 'video/*', 'application/*'],
-          access: 'public',           // 公开直链，音乐外链可用
-          addRandomSuffix: true,      // 防止同名覆盖
-        };
-      },
-      onUploadCompleted: async ({ blob }) => {
-        console.log('✅ Upload completed:', blob.url);
-      },
+    const formData = await req.formData();
+    const file = formData.get('file');
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+
+    const blob = await put(file.name, file, {
+      access: 'public',           // 公开外链，音乐可直接播放
+      addRandomSuffix: true,      // 防止重名覆盖
     });
 
-    return res.status(200).json(jsonResponse);
+    res.status(200).json({
+      url: blob.url,
+      name: file.name,
+      size: file.size
+    });
   } catch (error) {
-    console.error('Upload token error:', error);
-    return res.status(400).json({ error: error.message });
+    console.error('Blob upload error:', error);
+    res.status(500).json({ error: error.message || 'Upload failed' });
   }
 }

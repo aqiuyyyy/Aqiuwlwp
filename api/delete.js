@@ -1,15 +1,17 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
+
+const redis = Redis.fromEnv();
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   try {
     const { id, url } = req.body;
-    const raw = await kv.lrange('files', 0, -1);
+    const raw = await redis.lrange('files', 0, -1);
     for (const item of raw) {
       const record = typeof item === 'string' ? JSON.parse(item) : item;
       if (record.id === id) {
-        await kv.lrem('files', 1, item);
+        await redis.lrem('files', 1, item);
         break;
       }
     }

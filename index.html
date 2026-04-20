@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>阿湫外链网盘</title>
+  <title>阿漱外链网盘</title>
   <link href="https://s4.zstatic.net/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <link href="https://s4.zstatic.net/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
   <style>
@@ -19,7 +19,7 @@
 
 <div class="navbar navbar-default">
   <div class="container">
-    <a class="navbar-brand" href="./" style="color:white;">阿湫外链网盘</a>
+    <a class="navbar-brand" href="./" style="color:white;">阿漱外链网盘</a>
   </div>
 </div>
 
@@ -55,25 +55,39 @@
 
 <script src="https://s4.zstatic.net/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script>
-// Vercel Blob 客户端直传（最稳定方式）
+// Vercel Blob 客户端直传（推荐方式，避免 formData 崩溃）
 async function uploadFile(file) {
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const res = await fetch('/api/upload', {   // 后面我们会创建这个简单接口
+    // 先获取临时上传 URL（Vercel 会自动使用 BLOB_READ_WRITE_TOKEN）
+    const tokenRes = await fetch('/api/upload', {
       method: 'POST',
-      body: formData
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, size: file.size })
     });
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(text || 'Server error');
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      throw new Error(errText || '获取上传权限失败');
     }
 
-    const data = await res.json();
-    addToTable(data.name || file.name, data.url, (file.size / 1024 / 1024).toFixed(2) + ' MB');
-    alert(`✅ 上传成功！\n直链：${data.url}`);
+    const { url } = await tokenRes.json();
+
+    // 直接上传到 Blob
+    const uploadRes = await fetch(url, {
+      method: 'PUT',
+      body: file
+    });
+
+    if (uploadRes.ok) {
+      const blobUrl = uploadRes.url || url.split('?')[0]; // 真实直链
+      addToTable(file.name, blobUrl, (file.size / 1024 / 1024).toFixed(2) + ' MB');
+      alert(`✅ 上传成功！\n直链：${blobUrl}`);
+    } else {
+      throw new Error('上传到 Blob 失败');
+    }
   } catch (e) {
     console.error(e);
     alert('上传失败：' + e.message + '\n请看 F12 控制台');

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>阿湫外链网盘</title>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial, sans-serif; background: #1e1e1e; color: #eee; margin: 0; padding: 20px; }
+    h1 { text-align: center; color: #0af; }
+    .upload-area {
+      border: 3px dashed #0af; border-radius: 12px; padding: 60px 20px; text-align: center; margin: 20px auto; max-width: 800px;
+      transition: all 0.3s;
+    }
+    .upload-area:hover { background: #2a2a2a; border-color: #0ff; }
+    .upload-area p { font-size: 18px; }
+    button { padding: 12px 24px; background: #0af; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #0ff; }
+    .file-list { max-width: 800px; margin: 30px auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+    .file-item {
+      background: #2a2a2a; border-radius: 8px; padding: 10px; text-align: center; position: relative;
+    }
+    .file-item img, .file-item audio { max-width: 100%; border-radius: 6px; }
+    .links { margin-top: 10px; font-size: 13px; }
+    .links button { padding: 4px 8px; font-size: 12px; margin: 2px; }
+    .status { text-align: center; margin: 15px; color: #0f0; }
+  </style>
+</head>
+<body>
+  <h1>阿湫外链网盘</h1>
+  <p style="text-align:center;">支持图片 + 音乐上传 • 自动生成外链 </p>
+
+  <div class="upload-area" id="dropArea">
+    <p>拖拽文件到这里<br>或点击选择文件<br>支持粘贴图片（Ctrl+V）</p>
+    <input type="file" id="fileInput" multiple style="display:none;">
+    <button onclick="document.getElementById('fileInput').click()">选择文件</button>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="file-list" id="fileList"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

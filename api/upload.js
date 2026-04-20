@@ -1,5 +1,7 @@
 import { put } from '@vercel/blob';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
+
+const redis = Redis.fromEnv();
 
 export const config = {
   api: { bodyParser: false },
@@ -27,7 +29,7 @@ export default async function handler(req, res) {
       uploadedAt: new Date().toISOString(),
     };
 
-    await kv.lpush('files', JSON.stringify(record));
+    await redis.lpush('files', JSON.stringify(record));
 
     return res.status(200).json({ url: blob.url, record });
   } catch (error) {
